@@ -1,8 +1,8 @@
 var express = require('express');
 var app = express();
 var cors = require('cors');
-var dns = require('dns');
 var bodyParser = require('body-parser');
+var crypto = require('crypto');
 
 app.use(cors({optionsSuccessStatus: 200}));
 app.use(express.static('public'));
@@ -13,40 +13,72 @@ app.get("/", function (req, res) {
   res.sendFile(__dirname + '/views/index.html');
 });
 
-let urls = [];
-let id = 1;
+let users = [];
 
-app.post("/api/shorturl", function(req, res) {
-  let original_url = req.body.url;
-  try {
-    let urlObj = new URL(original_url);
-    dns.lookup(urlObj.hostname, function(err) {
-      if (err) {
-        res.json({error: 'invalid url'});
-      } else {
-        let existing = urls.find(u => u.original_url === original_url);
-        if (existing) {
-          res.json({original_url: existing.original_url, short_url: existing.short_url});
-        } else {
-          let newUrl = {original_url: original_url, short_url: id++};
-          urls.push(newUrl);
-          res.json(newUrl);
-        }
-      }
-    });
-  } catch(e) {
-    res.json({error: 'invalid url'});
-  }
+app.post("/api/users", function(req, res) {
+  let username = req.body.username;
+  let _id = crypto.randomBytes(12).toString('hex');
+  let newUser = {username: username, _id: _id, log: []};
+  users.push(newUser);
+  res.json({username: username, _id: _id});
 });
 
-app.get("/api/shorturl/:short", function(req, res) {
-  let short = parseInt(req.params.short);
-  let found = urls.find(u => u.short_url === short);
-  if (found) {
-    res.redirect(found.original_url);
-  } else {
-    res.json({error: 'No short URL found for the given input'});
+app.get("/api/users", function(req, res) {
+  let result = users.map(u => ({username: u.username, _id: u._id}));
+  res.json(result);
+});
+
+app.post("/api/users/:_id/exercises", function(req, res) {
+  let id = req.params._id;
+  let {description, duration, date} = req.body;
+  let user = users.find(u => u._id === id);
+  if (!user) return res.json({error: "User not found"});
+  
+  let exerciseDate = date ? new Date(date) : new Date();
+  if (exerciseDate.toString() === "Invalid Date") exerciseDate = new Date();
+  
+  let exercise = {
+    description: description,
+    duration: parseInt(duration),
+    date: exerciseDate.toDateString()
+  };
+  
+  user.log.push(exercise);
+  
+  res.json({
+    username: user.username,
+    description: exercise.description,
+    duration: exercise.duration,
+    date: exercise.date,
+    _id: user._id
+  });
+});
+
+app.get("/api/users/:_id/logs", function(req, res) {
+  let id = req.params._id;
+  let user = users.find(u => u._id === id);
+  if (!user) return res.json({error: "User not found"});
+  
+  let log = [...user.log];
+  
+  if (req.query.from) {
+    let fromDate = new Date(req.query.from);
+    log = log.filter(e => new Date(e.date) >= fromDate);
   }
+  if (req.query.to) {
+    let toDate = new Date(req.query.to);
+    log = log.filter(e => new Date(e.date) <= toDate);
+  }
+  if (req.query.limit) {
+    log = log.slice(0, parseInt(req.query.limit));
+  }
+  
+  res.json({
+    username: user.username,
+    count: log.length,
+    _id: user._id,
+    log: log
+  });
 });
 
 var listener = app.listen(process.env.PORT || 3000, function () {
