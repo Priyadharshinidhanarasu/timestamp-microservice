@@ -1,26 +1,16 @@
-<!DOCTYPE html>
-<html>
-   <head>
-      <title>File Metadata</title>
-      <link rel="shortcut icon" href="https://cdn.freecodecamp.org/universal/favicons/favicon-32x32.png" type="image/x-icon"/>
-      <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet" type="text/css">
-      <link href="/public/style.css" rel="stylesheet" type="text/css">
-   </head>
-   <body>
-      <div class="container">
-        <h2>API Project: File Metadata Microservice</h2>
-        <h3>Usage:</h3>
-        <p>Please Upload a File ...</p>
-        <div class="view">
-          <h4 id="output"></h4>
-          <form enctype="multipart/form-data" method="POST" action="/api/fileanalyse">
-            <input id="inputfield" type="file" name="upfile">
-            <input id="button" type="submit" value="Upload">
-          </form>
-        </div>
-      </div>
-      <div class="footer">
-        <p>by <a href="https://www.freecodecamp.org">freeCodeCamp</a></p>
-      </div>
-   </body>
-</html>
+var express = require('express');
+var cors = require('cors');
+var multer = require('multer');
+var app = express();
+var upload = multer({ dest: 'uploads/' });
+app.use(cors());
+app.use('/public', express.static(process.cwd() + '/public'));
+app.get('/', function (req, res) {
+    res.sendFile(process.cwd() + '/views/index.html');
+});
+app.post('/api/fileanalyse', upload.single('upfile'), function(req, res) {
+  res.json({ name: req.file.originalname, type: req.file.mimetype, size: req.file.size });
+});
+var listener = app.listen(process.env.PORT || 3000, function () {
+  console.log('listening on ' + listener.address().port);
+});
