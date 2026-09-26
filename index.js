@@ -8,27 +8,14 @@ app.get("/", function (req, res) {
   res.sendFile(__dirname + '/views/index.html');
 });
 
-app.get("/api/:date?", function (req, res) {
-  let dateString = req.params.date;
-  let date;
-  
-  if (!dateString) {
-    date = new Date();
-  } else {
-    if (!isNaN(dateString)) {
-      date = new Date(parseInt(dateString));
-    } else {
-      date = new Date(dateString);
-    }
-  }
-
-  if (date.toString() === "Invalid Date") {
-    res.json({ error: "Invalid Date" });
-  } else {
-    res.json({ unix: date.getTime(), utc: date.toUTCString() });
-  }
+app.get("/api/whoami", function(req, res) {
+  res.json({
+    ipaddress: req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress,
+    language: req.headers['accept-language'],
+    software: req.headers['user-agent']
+  });
 });
 
 var listener = app.listen(process.env.PORT || 3000, function () {
-  console.log('Your app is listening on port ' + listener.address().port);
+  console.log('listening on ' + listener.address().port);
 });
